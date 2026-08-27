@@ -1,8 +1,8 @@
 data/raw/*.pdf
-data/processed/*.jsonl
 .env
 __pycache__/
 *.pyc
 .venv/
 eval/reports/*.json
 .chroma/
+data/processed/bm25.pkl

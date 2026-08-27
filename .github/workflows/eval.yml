@@ -1,0 +1,52 @@
+name: RAG Eval Gate
+
+# Runs the real retrieval-quality gate on every change that could affect it —
+# a PR that regresses chunking, retrieval, or generation gets blocked here,
+# not caught later by a user noticing a wrong answer.
+#
+# workflow_dispatch is included so this can be triggered manually from the
+# GitHub Actions tab — useful for demoing the gate without needing an actual PR.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Build vector index from committed chunks
+        # data/processed/chunks.jsonl is tracked in git (see .gitignore); the
+        # index itself (.chroma/, bm25.pkl) is NOT — it's derived data, rebuilt
+        # fresh here every run rather than committing binary artifacts.
+        run: |
+          export PYTHONPATH=src
+          python -m trustlens.index
+
+      - name: Run eval gate (real API calls — needs OPENAI_API_KEY secret)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          export PYTHONPATH=.:src
+          python -m eval.run_eval --backend openai --gate
+
+      - name: Upload eval report
+        # Keeps the full per-question JSON attached to the run even when the
+        # gate fails, so a failure can be diagnosed from the Actions tab
+        # without needing to reproduce it locally first.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval/reports/*.json
