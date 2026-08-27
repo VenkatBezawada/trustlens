@@ -1,0 +1,41 @@
+[
+  {
+    "ticker": "SUNPHARMA",
+    "company": "Sun Pharmaceutical Industries",
+    "fy": "FY24",
+    "pdf": "data/raw/sunpharma_fy24.pdf",
+    "source_url": "https://nsearchives.nseindia.com/annual_reports/AR_24355_SUNPHARMA_2023_2024_08072024153247.pdf",
+    "sections": {
+      "mda": [
+        17,
+        67
+      ]
+    }
+  },
+  {
+    "ticker": "HDFCBANK",
+    "company": "HDFC Bank",
+    "fy": "FY24",
+    "pdf": "data/raw/hdfcbank_fy24.pdf",
+    "source_url": "https://nsearchives.nseindia.com/annual_reports/AR_24576_HDFCBANK_2023_2024_18072024183453.pdf",
+    "sections": {
+      "mda": [
+        241,
+        277
+      ]
+    }
+  },
+  {
+    "ticker": "CIPLA",
+    "company": "Cipla",
+    "fy": "FY24",
+    "pdf": "data/raw/cipla_fy24.pdf",
+    "source_url": "https://www.cipla.com/sites/default/files/Annual-Report-2023-24-(Double%20page).pdf",
+    "sections": {
+      "mda": [
+        64,
+        73
+      ]
+    }
+  }
+]

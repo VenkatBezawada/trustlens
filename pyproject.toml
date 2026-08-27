@@ -1,0 +1,27 @@
+[project]
+name = "trustlens"
+version = "0.1.0"
+description = "Eval-driven RAG over Indian annual reports"
+requires-python = ">=3.11"
+
+# Phases built so far: ingest, retrieval (dense+sparse+rerank), generation.
+# Uncomment eval/observability deps once those phases are built.
+dependencies = [
+    "pymupdf>=1.24",              # PDF -> text (ingest)
+    "chromadb>=0.5",              # dense vector store (retrieval)
+    "sentence-transformers>=3.0", # dense embeddings + cross-encoder reranker (retrieval)
+    "rank-bm25>=0.2",             # sparse retrieval (retrieval)
+    "openai>=1.50",               # generation with prompted citations (default backend)
+    "anthropic>=0.40",            # generation with structural citations (alt backend, --backend anthropic)
+    # --- eval (not yet built) ---
+    # "ragas>=0.2",
+    # --- observability (not yet built) ---
+    # "langfuse>=2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
