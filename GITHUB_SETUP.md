@@ -27,17 +27,15 @@ git branch -M main
 git push -u origin main
 ```
 
-## 4. Add your OpenAI key as a repo secret
-The workflow needs `OPENAI_API_KEY` to run the real eval gate — **never put the key in code or the workflow file itself**, it must be a secret.
+## 4. (Optional) Add your OpenAI key for the real gate
+**You don't need to do this at all.** The workflow now detects whether a key is configured and adapts automatically:
+- **No key set** → CI runs `eval/run_eval.py --dry-run` — free, no API calls, no key needed anywhere. This validates the whole pipeline (ingest, index, retrieve) runs correctly and reports real, deterministic retrieval metrics. It does not enforce the quality gate, since correctness can't be judged for free.
+- **Key set** → CI runs the real, paid gate — actual generation, actual LLM-judged correctness, and a genuine pass/fail against the thresholds in `eval/run_eval.py`.
 
-On GitHub: your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-- Name: `OPENAI_API_KEY`
-- Value: your real key
+If you want the real gate later, add it as a **repo secret** (not in any file, never committed): your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**, name `OPENAI_API_KEY`. GitHub encrypts secrets and never exposes them in logs or code — this is a different thing from putting a key in a file, which is what `.gitignore`/`.env` already protect against. Add it whenever you're comfortable; the same workflow picks it up automatically, no code changes needed.
 
 ## 5. Watch it run
-Pushing to `main` in step 3 already triggered the workflow once. Check your repo's **Actions** tab to see it running (or having run). Given today's actual baseline (`context_recall` ~77%, gate thresholds at 80%/90%), **expect it to fail** — that's correct, not a problem. A red X here, backed by a real diagnosed reason, is a legitimate first result.
-
-You can also trigger it manually anytime without pushing: **Actions** tab → **RAG Eval Gate** → **Run workflow**.
+Your push in step 3 already triggered the workflow once. Check your repo's **Actions** tab. Without a key configured, expect a **green check** — that's the dry-run pipeline-validation path succeeding, not a quality gate passing (that distinction matters if you're describing this in an interview).
 
 ## 6. The portfolio moment: demonstrate the gate actually blocking something
 This is the screenshot worth having in your README — proof the gate isn't decorative.

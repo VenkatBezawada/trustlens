@@ -34,12 +34,25 @@ jobs:
           export PYTHONPATH=src
           python -m trustlens.index
 
-      - name: Run eval gate (real API calls — needs OPENAI_API_KEY secret)
+      - name: Run eval (real gate if a key is configured, free dry-run otherwise)
+        # No OPENAI_API_KEY secret required for this repo to work. If none is
+        # set, this automatically falls back to --dry-run (real, deterministic
+        # retrieval metrics; generation/correctness metrics report N/A — see
+        # eval/run_eval.py's docstring). Add an OPENAI_API_KEY repo secret
+        # later (Settings -> Secrets and variables -> Actions) to upgrade this
+        # to the real, paid gate with no other changes needed — same workflow,
+        # same command, it just detects the key and switches modes.
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           export PYTHONPATH=.:src
-          python -m eval.run_eval --backend openai --gate
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "No OPENAI_API_KEY secret configured -- running in free dry-run mode."
+            python -m eval.run_eval --dry-run
+          else
+            echo "OPENAI_API_KEY found -- running the real, paid eval gate."
+            python -m eval.run_eval --backend openai --gate
+          fi
 
       - name: Upload eval report
         # Keeps the full per-question JSON attached to the run even when the
