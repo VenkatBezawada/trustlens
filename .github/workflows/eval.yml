@@ -34,23 +34,25 @@ jobs:
           export PYTHONPATH=src
           python -m trustlens.index
 
-      - name: Run eval (real gate if a key is configured, free dry-run otherwise)
-        # No OPENAI_API_KEY secret required for this repo to work. If none is
-        # set, this automatically falls back to --dry-run (real, deterministic
-        # retrieval metrics; generation/correctness metrics report N/A — see
-        # eval/run_eval.py's docstring). Add an OPENAI_API_KEY repo secret
-        # later (Settings -> Secrets and variables -> Actions) to upgrade this
-        # to the real, paid gate with no other changes needed — same workflow,
-        # same command, it just detects the key and switches modes.
+      - name: Run eval gate (free recall-only gate by default, full paid gate if a key is configured)
+        # No OPENAI_API_KEY secret required for this repo to enforce a real gate:
+        # context_recall is deterministic (pure chunk-ID overlap, no LLM involved),
+        # so it's checked EVERY run, key or no key — a genuine retrieval regression
+        # fails this CI check for free. Only the correctness/success-rate half of
+        # the gate needs a real judge call, and that half is skipped (not silently
+        # passed) when no key is present — see apply_gate() in eval/run_eval.py.
+        # Add an OPENAI_API_KEY repo secret later (Settings -> Secrets and
+        # variables -> Actions) to upgrade to the full gate — same workflow, same
+        # command, it just detects the key and checks both halves.
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           export PYTHONPATH=.:src
           if [ -z "$OPENAI_API_KEY" ]; then
-            echo "No OPENAI_API_KEY secret configured -- running in free dry-run mode."
-            python -m eval.run_eval --dry-run
+            echo "No OPENAI_API_KEY secret configured -- running free dry-run gate (context_recall only)."
+            python -m eval.run_eval --dry-run --gate
           else
-            echo "OPENAI_API_KEY found -- running the real, paid eval gate."
+            echo "OPENAI_API_KEY found -- running the full, paid eval gate."
             python -m eval.run_eval --backend openai --gate
           fi
 
