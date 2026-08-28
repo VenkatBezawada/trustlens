@@ -37,26 +37,23 @@ If you want the real gate later, add it as a **repo secret** (not in any file, n
 ## 5. Watch it run
 Your push in step 3 already triggered the workflow once. Check your repo's **Actions** tab. Without a key configured, expect a **green check** — that's the dry-run pipeline-validation path succeeding, not a quality gate passing (that distinction matters if you're describing this in an interview).
 
-## 6. The portfolio moment: demonstrate the gate actually blocking something
-This is the screenshot worth having in your README — proof the gate isn't decorative.
+## 6. The portfolio moment: get a real, honest red ❌ on a PR
+
+Good news: you don't need to fake a regression. `context_recall` is a genuine, deterministic metric — no API key needed for it — and your real hybrid recall (77.4%) is honestly below the gate's 80% threshold right now. The gate was recently changed to actually *enforce* that free check even with no key configured (it used to just report the number and skip enforcement). Turning that enforcement on is itself a real, defensible PR — and it will genuinely fail, for a genuine, already-documented reason.
 
 ```powershell
-git checkout -b break-retrieval
-```
-Make a deliberately bad change — e.g. in `src/trustlens/retrieve.py`, change hybrid mode's `OVER_RETRIEVE_N` from 15 down to 1 (starves the reranker of candidates), or in `eval/run_eval.py` temporarily force `mode="naive"` regardless of the loop. Commit and push:
-```powershell
+git checkout -b enforce-recall-gate
 git add .
-git commit -m "Deliberately break retrieval to demo the CI gate"
-git push -u origin break-retrieval
+git commit -m "Enforce free recall-only gate even without an API key"
+git push -u origin enforce-recall-gate
 ```
-Open a Pull Request on GitHub from this branch into `main`. Watch the **RAG Eval Gate** check run and fail (red ❌) directly on the PR. Screenshot that — it's the single most convincing image for a README, because it proves the gate can't be bypassed by a bad change slipping through unnoticed.
 
-Then close the PR without merging, and delete the branch:
-```powershell
-git checkout main
-git branch -D break-retrieval
-git push origin --delete break-retrieval
-```
+Open a Pull Request on GitHub from this branch into `main`. Watch the **RAG Eval Gate** check run and fail (red ❌) directly on the PR — a real quality bar, genuinely not met yet, caught automatically, no artificial sabotage and no API key required. Screenshot that.
+
+**Whether to merge it is a real decision, not just cleanup:** merging means your `main` branch's CI badge turns red too, honestly reflecting that neither retrieval mode clears 80% recall yet — which is already exactly what the README says in plain text. An honest red badge with a documented, explained cause is more credible than a misleadingly green one. If you'd rather keep the badge green for someone quickly scanning the repo, you can leave the PR open (or close it) without merging — the screenshot alone still proves the mechanism works. Either choice is defensible; know which story you're telling.
+
+### Optional: the artificial-sabotage variant
+If you later improve recall past 80% (bigger golden set, better chunking) and want to *re-*demonstrate the gate catching a *new* regression, the original recipe still works: branch off, deliberately break something (e.g. in `src/trustlens/retrieve.py`, drop hybrid's `OVER_RETRIEVE_N` from 15 to 1), open a PR, watch it fail, then revert without merging.
 
 ## 7. Cost note
 Each real gate run makes ~32 generation calls + up to 32 judge calls against `gpt-5-mini` — a few cents per run (see the cost breakdown discussed earlier in the project). Fine to trigger a handful of times while setting this up; not something to run on every commit indefinitely without noticing.

@@ -152,25 +152,44 @@ def print_report(naive_agg: dict, hybrid_agg: dict) -> None:
     print("wrongful abstention scored as a failure) and is the fairer cross-mode comparison.")
 
 
-def apply_gate(hybrid_agg: dict) -> bool:
+def apply_gate(hybrid_agg: dict, dry_run: bool = False) -> bool:
     """Returns True if the gate PASSES. Only checked against the hybrid mode —
     hybrid is the system we're actually shipping; naive is the baseline it's
     compared against, not something we're gating on.
 
-    Gates on answerable_success_rate, NOT correctness_rate — correctness_rate's
-    denominator shrinks for a system that abstains more, which would let a
-    system game the gate by refusing hard questions instead of answering them
-    correctly. answerable_success_rate has a fixed denominator and scores a
-    wrongful abstention as a failure, so it can't be gamed that way."""
+    Split into two independent checks because they have different costs:
+      - context_recall is DETERMINISTIC (pure chunk-ID overlap, no LLM) — it's
+        real and enforceable even with zero API calls, so it's checked EVERY
+        time, dry-run or not.
+      - answerable_success_rate needs a real correctness judge, so it's only
+        checked when real (non-dry-run) data exists. In dry-run, this half is
+        reported as skipped rather than silently passed — a dry run proves
+        nothing about correctness and shouldn't be able to green-light a gate
+        on it.
+
+    This means the free path (no API key configured) can still catch a real
+    retrieval regression — the paid path additionally catches a correctness
+    regression. Neither one can be gamed by the other being absent.
+    """
     recall = hybrid_agg["mean_context_recall"]
     success = hybrid_agg["answerable_success_rate"]
     ok = True
+
     if recall is None or recall < MIN_CONTEXT_RECALL:
         print(f"GATE FAIL: context_recall {recall} < {MIN_CONTEXT_RECALL}")
         ok = False
-    if success is None or success < MIN_CORRECTNESS:
+    else:
+        print(f"GATE PASS: context_recall {recall:.1%} >= {MIN_CONTEXT_RECALL:.0%}")
+
+    if dry_run:
+        print("GATE SKIPPED (partial): answerable_success_rate needs real judge data "
+              "— not checked in dry-run. Only the free context_recall gate applies.")
+    elif success is None or success < MIN_CORRECTNESS:
         print(f"GATE FAIL: answerable_success_rate {success} < {MIN_CORRECTNESS}")
         ok = False
+    else:
+        print(f"GATE PASS: answerable_success_rate {success:.1%} >= {MIN_CORRECTNESS:.0%}")
+
     return ok
 
 
@@ -222,13 +241,10 @@ def main() -> None:
     print(f"\nFull report written to {out_path}")
 
     if args.gate:
-        if args.dry_run:
-            print("\nGATE SKIPPED — cannot gate on a dry run (no real correctness/citation data).")
-        else:
-            passed = apply_gate(hybrid_agg)
-            print("\nGATE:", "PASS" if passed else "FAIL")
-            if not passed:
-                sys.exit(1)
+        passed = apply_gate(hybrid_agg, dry_run=args.dry_run)
+        print("\nGATE:", "PASS" if passed else "FAIL")
+        if not passed:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
